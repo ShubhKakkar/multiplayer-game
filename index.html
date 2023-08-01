@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book-Cricket</title>
+</head>
+<body>
+    <h1 style="font-family: 'Roboto'">Book-Cricket</h1>
+    <button id="button-create" style="padding:10px">Create a game</button>
+    <p id="game-id"></p>
+    <div style="margin-top:10px">
+        <input type="text" name="game-id-input" id="game-id-input" placeholder="Enter a game Id" style="padding: 10px;">
+        <button id="button-join" style="padding:10px">Join a game</button>
+        <!-- <button id="button-play" style="padding: 10px;">Play Game</button> -->
+        <!-- Game zone -->
+        <div id="game">
+            <div id="player--1">
+                <h2>Player-1</h2>
+                <p id="id--1">Player Id</p>
+                <div id="totalScore--1"></div>
+                <div id="outCount--1"></div>
+                <button id="flipPage--1">Flip the Page</button>
+            </div>
+            <div id="player--2">
+                <h2>Player-2</h2>
+                <p id="id--2">Player Id</p>
+                <div id="totalScore--2"></div>
+                <div id="outCount--2"></div>
+                <button id="flipPage--2">Flip the page</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // HTML Elements
+        const btnCreate = document.getElementById("button-create");
+        const btnJoin = document.getElementById("button-join");
+        const gameIdBox = document.getElementById("game-id");
+        const gameIdInput = document.getElementById("game-id-input");
+        // const btnPlay = document.getElementById("button-play");
+        let game = document.getElementById("game");
+        let player1 = document.getElementById("player--1");
+        let player2 = document.getElementById("player--2");
+        let id1 = document.getElementById("id--1");
+        let id2 = document.getElementById("id--2");
+        let totalScore1 = document.getElementById("totalScore--1");
+        let totalScore2 = document.getElementById("totalScore--2");
+        let outCount1 = document.getElementById("outCount--1");
+        let outCount2 = document.getElementById("outCount--2");
+        let flipPage1 = document.getElementById("flipPage--1");
+        let flipPage2 = document.getElementById("flipPage--2");
+        let clientId = localStorage.getItem("clientId");
+
+        // Runs and Out Count
+        let totalRuns = 0;
+        let outCount = 0;
+
+        // Web Socket Code
+        let ws = new WebSocket('ws://localhost:3000');
+        flipPage1.style.display="none";
+        flipPage2.style.display="none";
+        ws.onmessage = async(message) => {
+            const response = await JSON.parse(message.data);
+            if(response.method === "connect") {
+                clientId = response.clientId;
+                localStorage.setItem("clientId", clientId);
+                console.log("Client Id is set successfully " + clientId);
+            }
+            else if(response.method === "create") {
+                gameId = response.game.gameId;
+                // localStorage.setItem("gameId", gameId);
+                gameIdBox.innerText = `game-id: ${gameId}`;
+                console.log("game Id is set successfully " + gameId);
+            }
+            else if(response.method === "join") {
+                gameId = response.game.gameId;
+                localStorage.setItem("gameId", gameId);
+                let clients = response.game.clients;
+                console.log(`Client with client id ${clients[clients.length-1].id} has joined the game`);
+                if(clients[0]) {
+                    id1.innerText = `Player1 Id: ${clients[0].id}`;
+                    totalScore1.innerText = `Total Runs: ${clients[0].totalRuns}`;
+                    outCount1.innerText = `Out Count: ${clients[0].outCount}`;
+                    if(clients[0].id === clientId) {
+                        flipPage1.style.display = "block";
+                    }
+                }
+                if(clients[1]) {
+                    id2.innerText = `Player2 Id: ${clients[1].id}`;
+                    totalScore2.innerText = `Total Runs: ${clients[1].totalRuns}`;
+                    outCount2.innerText = `Out Count: ${clients[1].outCount}`;
+                    if(clients[1].id === clientId) {
+                        flipPage2.style.display = "block";
+                    }
+                }
+            }
+            else if(response.method === "update") {
+                let allClients = response.game.clients;
+                totalScore11 = allClients[0].totalRuns;
+                outCount11 = allClients[0].outCount;
+                totalScore22 = allClients[1].totalRuns;
+                outCount22 = allClients[1].outCount;
+                // Updating on frontend;
+                totalScore1.innerText = totalScore11;
+                outCount1.innerText = outCount11;
+                totalScore2.innerText = totalScore22;
+                outCount2.innerText = outCount22;
+            }
+        }
+
+
+        // Wiring Events
+        btnCreate.addEventListener('click', (event) => {
+            const payload = {
+                "method": "create",
+                "clientId": localStorage.getItem("clientId")
+            }
+            ws.send(JSON.stringify(payload));
+        });
+        btnJoin.addEventListener('click', (event)=> {
+            const payload = {
+                "method": "join",
+                "clientId": localStorage.getItem("clientId"),
+                "gameId": gameIdInput.value,
+            }
+            ws.send(JSON.stringify(payload));
+        });
+        flipPage1.addEventListener('click', (event) => {
+            const playPayload = {
+                "method": "play",
+                "clientId": localStorage.getItem("clientId"),
+                "gameId": localStorage.getItem("gameId"),
+                runsScored: Math.floor(Math.random()*6)
+            }
+            ws.send(JSON.stringify(playPayload));
+        });
+        flipPage2.addEventListener('click', (event) => {
+            const playPayload = {
+                "method": "play",
+                "clientId": localStorage.getItem("clientId"),
+                "gameId": localStorage.getItem("gameId"),
+                runsScored: Math.floor(Math.random()*10)
+            }
+            ws.send(JSON.stringify(playPayload));
+        });
+    </script>
+</body>
+</html>
